@@ -1,0 +1,680 @@
+<!DOCTYPE html
+PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Contracts Management</title>
+
+	<!--
+	This a prototype of mobile application wich connects to Oracle webCenter Content
+	This code relies on JqueryMobile framework and the html markup is dynamically generated at client side
+	in order to have the minimum footprint at the server level
+	This application uses intensiveley the wcc/jqm plugin developed by bezzotech with some minor modifications 	
+        Patrick Monaco
+        Version 1.0 - June 21 2013
+	-->
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="contract.css" />
+	<link rel="stylesheet" href="jquery.mobile-1.3.1/jquery.mobile-1.3.1.min.css" />
+	<link type="text/css" href="jqm-datebox.min.css" rel="stylesheet" /> 
+	
+	<script src="jquery-1.9.1.min.js"></script>
+	<script src="jquery.mobile-1.3.1/jquery.mobile-1.3.1.min.js"></script>
+	<script type="text/javascript" src="jqm-datebox.core.min.js"></script>
+	<script type="text/javascript" src="wcc-jqm.js"></script>
+	<script type="text/javascript" src="jqm-datebox-1.1.0.mode.calbox.js"></script>
+	<script type="text/javascript" src="jquery.mobile.datebox.i18n.en_US.utf8.js"></script>
+	
+	<!-- load the UCM jQuery plugin -->
+	<script type="text/javascript" src="jquery.oracle-ucm-2.1.js"></script>
+
+	<!-- the jQuery code to execute javascript when the buttons are clicked -->
+	<script type="text/javascript">
+		var Gterm = '';		// term selected with taxonomy
+		var hostname = 'wcc-base';
+                var rendering = 'P';  // P: PDF , D: Dynamic converter
+		// because a bug in WCC in PS3
+		var arrPath= ["EUROVOC"];  // Thesaurus Name 
+		var arrFilters = { "wwxWCThes":"Building Materials", "wwxWCEurovoc":"Eurovoc Classification", "wwdExtension":"Extension", "wwdDocType":"Document Type", "wwxIdcProfile":"Document Profile" };
+		
+		// Display the domain list for Eurovoc Thesaurus
+		function displayDomains () {
+			$.mobile.changePage("#taxonomy");
+			$("#listeTaxo").empty();
+			
+			setPathPos(arrPath[0]); // update the breadcrumb
+			$.ucm.thes('top',null, function(ucmResponse) {
+				
+				var searchResults = ucmResponse.ResultSets['SearchResults'];		
+				for (var rowIndex in searchResults.rows) {
+				  var row = ucmResponse.getRow(searchResults, rowIndex);
+				  var resultList = '<li ><a href="javascript:drillTaxo(\'' + row.DOMAIN_NAME.toUpperCase() + '\')">' 
+					+ row.DOMAIN_NAME.toUpperCase() + 
+					'</a><a href="javascript:displayPopTaxo(\'' + 
+					row.DOMAIN_NAME + '\')" data-rel="popup" data-transition="pop" ></a></li>';
+				 
+				  $("#listeTaxo").append(resultList).listview("refresh");
+				}
+				setPathPos(arrPath[0]); // update the breadcrumb
+			});
+		}
+
+			// Display from drilldown in Thesaurus
+			function drillTaxo (dparent) {
+			$.mobile.changePage("#taxonomy");
+			$("#listeTaxo").empty();
+			
+			$.ucm.thes('bt',dparent, function(ucmResponse) {
+			
+				var searchResults = ucmResponse.ResultSets['SearchResults'];				
+				
+				for (var rowIndex in searchResults.rows) {
+				  	var row = ucmResponse.getRow(searchResults, rowIndex);
+
+
+				  	var resultList = '<li><a href="javascript:drillTaxo(\'' + 
+						row.dID.replace(/\'/g,"\\'") + '\')">' + 
+						row.dID + '</a><a href="javascript:displayPopTaxo(\'' + 
+					row.dID.replace(/\'/g,"\\'") + '\')" data-rel="popup" data-transition="pop" data-theme="d"></a></li>';
+				  $("#listeTaxo").append(resultList).listview("refresh");
+				}
+				
+				/*
+				for (var rowIndex in searchResults.rows) {
+				  	var row = ucmResponse.getRow(searchResults, rowIndex);
+				}
+				// split the single row into parts
+					   
+					    var t2=row.dID.replace(/\{/g,"");
+					    t2= t2.replace(/\}/g,"")
+					    var elem = t2.split('|');
+					    resultList = '';
+					    for(var i = 0;i<elem.length; i++) {
+						
+						var resultList = '<li><a href="javascript:drillTaxo(\'' + 
+						elem[i].replace(/[^\.replace(/\'/g,"\\'") + '\')">' + 
+						elem[i] + '</a><a href="javascript:displayPopTaxo(\'' + 
+						elem[i].replace(/\'/g,"\\'") + '\')" data-rel="popup" data-transition="pop" data-theme="d"></a></li>';
+				  		$("#listeTaxo").append(resultList).listview("refresh");
+					    }
+				// End split
+				*/
+					
+				// Update Breadcrumb
+				
+				setPathPos(dparent); // update the breadcrumb
+				
+			});
+		}
+		// Go Back in the tree for a specifc term
+		function setPathPos(term) {
+			//alert('je rentre');
+			var ch=term;
+			
+			arrPath.push(ch);
+			for(var i = arrPath.length - 1; i >= 0; i--) {
+    				if(arrPath[i] == ch ) {
+					//alert(i);
+					//alert(arrPath[i]);
+       					arrPath.splice(i+1, 50);
+    				}
+			}
+
+			$("#taxoPath").empty();
+			for (var j=0;j< arrPath.length;j++) {
+				var m='';
+				if (j==0){
+				   m= '<a href="javascript:displayDomains()" data-mini="true" data-role="button">' +
+					arrPath[j] + '</a>';
+				} 
+				else
+				{
+				   m='<a href="javascript:drillTaxo(\'' + arrPath[j] + 
+					'\')" data-role="button" data-icon="arrow-r">'+ arrPath[j] + '</a>'
+				    //alert(arrPath[j]);
+				}
+				$("#taxoPath").append(m);
+				// buttonMarkup est necessaire pour le refresh !!
+				
+				$('#taxoPath').children('a').buttonMarkup({ inline: true, theme: "b", mini: true }); 
+				$("#taxoPath").controlgroup("refresh");
+			}	
+
+		}
+ 
+		function displayPopTaxo(term) {
+			Gterm = term;
+			$('#popupMenuTaxo').popup('open',{ transition : "turn", positionTo: "#listeTaxo:contains(term)" });
+		}
+
+                function displayQs(filtre) {
+			
+			//filtre = 'test <AND> ' + filtre;
+			$("#popupPanel").panel("close");
+			
+			$("#exts").val(filtre);
+			//$("#runSearch").trigger("click");
+			
+			runSearch();
+		}
+
+		 function displayQt(term, verb) {
+			//alert(term);
+			// EQ est bien traité ?
+			if (verb == 'NT'){
+				term = '"NT(' + term + ',3)"'; // depth level= ?
+			}
+			else if (verb == 'BT'){
+				term = '"BT(' + term + ',1)"'; 
+			}
+			else if (verb == 'RT'){
+				term = '"RT(' + term + ')"'; 
+			}
+			else if (verb == 'SYN'){
+				term = '"TRSYN(' + term + ')"'; 
+			}
+
+			$("#exts").val('');	// Reset previous filters
+			$("#quickSearch").val(term);
+			if ((verb=='RT') || (verb=='SYN')){
+			   $("#relatedPanel").panel("close");
+			}
+			runSearch();
+		}
+
+		// Reset Navigation filters
+
+		function resetNav() {
+			$("#popupPanel").panel("close");
+			$("#exts").val('');
+			
+			$.mobile.loading( 'hide' );
+			runSearch();
+		}
+		function clearSearch(){
+			$("#quickSearch").val('');
+			$("#exts").val('');
+		}
+              
+		$(document).on("pageinit", function(){
+			var qsOriginal='';
+			// set the path to UCM: you may need to modify this
+			$.ucm.cgiPath = "http://" + hostname + "/cs/idcplg";
+			
+			// run a search and display the results
+		});
+
+             // ============ SEARCH ============
+
+		function runSearch() {	
+				
+				//$.mobile.loading( 'show' );
+				//$.mobile.showPageLoadingMsg("a", "Searching ...");
+				//$.mobile.loading( 'show', { theme: "b", text: "Searching...", textonly: true });
+				//$.mobile.changePage("#results");
+				// Querytext=xIdcProfile<matches>%60FicheContrat%60&dpTriggerValue=FicheContrat
+				var temp = $("#searchResults").html();
+				var text = $("#quickSearch").val();
+				var exts = $("#exts").val();
+				// test
+				if (($("#profile").val() != 'All') && exts == '') {
+				    exts = 'xIdcProfile<matches>`' + $("#profile").val()  + '`';
+				}
+				
+				var nb = $("#nbdoc").val();
+				var nbdoc=0; // # of documents found
+				$.ucm.quickSearch(text, exts, nb, function(ucmResponse) {
+					
+					// Affichage de la Query String
+					qsOriginal = ucmResponse.LocalData.OriginalUnencodedQueryText;
+				
+					// ---------------- Displaying results
+					// 
+					$("#liste").empty();
+					$.mobile.changePage("#results");
+					var searchResults = ucmResponse.ResultSets.SearchResults;
+					nbdoc= searchResults.rows.length;
+					for (var rowIndex in searchResults.rows) {
+						var row = ucmResponse.getRow("SearchResults", rowIndex);
+						if (rendering == 'D'){						
+						   var resultList = "<li data-icon='info'><a href='" + 
+							"http://" + hostname + "/cs/idcplg?IdcService=GET_DYNAMIC_CONVERSION&dID=" +  
+							row.dID + 
+							"' data-role='button' rel='external' 	target='_blank' data-inline='true'>" + 
+							row.dDocTitle + "</a><a href='#popup" + row.dDocName + 
+							"' data-transition='pop' data-rel='popup'></a></li>";
+                                                   } 
+						else
+						{
+						   var resultList = "<li data-icon='info'><a href='" + 
+							"http://" + hostname + row.URL +
+							"' data-role='button' rel='external' 	target='_blank' data-inline='true'>" + 
+							row.dDocTitle + "</a><a href='#popup" + row.dDocName + 
+							"' data-transition='pop' data-rel='popup'></a></li>";
+
+						}
+						$("#liste").append(resultList).listview("refresh");
+						var resultPop = "<div id='popup" + row.dDocName + 
+							"' data-role='popup'><ul><li><strong> Content ID : </strong>" + 
+							row.dDocName + "</li><li><strong> Author : </strong>" + 
+							row.dDocAuthor + "</li>" +
+								"<li><strong>Material : </strong>" + row.xWCThes + "</li>"	+
+								"<li><strong>Comments: </strong>" + row.xComments + "</li>"	+
+								"<li><strong>Created by: </strong>" + row.dDocCreator + "</li>"	+
+								"</ul>";
+						$("#popupSet").append(resultPop).trigger("create");		
+					}
+					// If no document found
+					if (nbdoc==0){
+
+						$('#noresult').popup('open',{ transition : "turn", positionTo: "window" });
+					}
+					// ----------------- afichage navigation latérale gauche pour Filtrage
+					
+					$("#navigation").empty();
+					var searchResultsNav = ucmResponse.ResultSets.SearchResultNavigation;
+					var theme='b';
+					// If no result, the following set will be empty. we must try this part of code
+					try {
+					  for (var rowIndex in searchResultsNav.rows) {
+						
+						var row = ucmResponse.getRow("SearchResultNavigation", rowIndex);
+						// There is one distinct value, at least
+							
+						if (row.categoryCount == '1')
+						 {theme='a';}
+						else 
+						 {theme='b';}
+						 //alert(theme);
+						  var idSub = "SearchResultNavigation" + row.drillDownFieldName;
+						  var resultNavigation = '<div data-role="collapsible-set" data-theme="'+ theme +'" ' + 
+							' data-content-theme="d"><div data-role="collapsible"><h3>' + 
+							row.drillDownDisplayValue + '</h3><ul id="' + idSub + 
+							'" data-role="listview" data-mini="true"></ul></div></div>';
+						  $("#navigation").append(resultNavigation).trigger("create");
+						
+						  eval("var searchResultsSubNav = ucmResponse.ResultSets." + idSub);
+						
+						  for (var rowSubIndex in searchResultsSubNav.rows) {						
+							var rowSub = ucmResponse.getRow(idSub, rowSubIndex);
+							var resultSubNavigation = '<li><a href="javascript:displayQs(\'' +
+								 row.drillDownFieldName +' <matches> `'+ rowSub.drillDownOptionValue + 
+								'`\')">' + rowSub.drillDownOptionValue + 
+								'<span class="ui-li-count">' + rowSub.count + '</span></a></li>';
+							$("#" + idSub).append(resultSubNavigation).listview("refresh");
+						  }						
+						
+					  }
+					}
+					catch(e) {
+					  // Nothing special
+					}
+
+					// ----------------- afichage navigation latérale droit pour Related Terms et synonymes
+					// this panel is populated only if a citeria has been entered
+					
+					  $("#listeRT").empty();
+					  $("#listeSYN").empty();
+					  $("#relatedButtons").empty();
+					  $("#synButtons").empty();
+					  // if a term has been entered and the term is different of a thesaurus expression	
+				          if (($("#quickSearch").val()!='') && $("#quickSearch").val().indexOf('"')<0){
+					  //$("#listeRT").empty();
+						
+					  var t1 = $("#quickSearch").val();
+
+					  // ---------- Getting RT
+					  $.ucm.thes('rt', t1.toUpperCase() , function(ucmResponse) {
+						
+					    var searchResults = ucmResponse.ResultSets['SearchResults'];
+					    // result is supposed returned as the form of
+					    //	 {FRAUDE}|{FRAUDE CONTRE L\u2019UNION EUROP\u00C9ENNE}|{TRAFIC ILLICITE}			
+					    for (var rowIndex in searchResults.rows) {
+				  	      var row = ucmResponse.getRow(searchResults, rowIndex);
+				  	     
+					    }
+					    // split the single row into parts
+					   
+					    var t2=row.RT.replace(/\{/g,"");
+					    t2= t2.replace(/\}/g,"")
+					    var elem = t2.split('|');
+					    resultList = '';
+					    for(var i = 0;i<elem.length; i++) {
+						
+    						
+						resultList = resultList + '<li  data-theme="d">' + 
+					     	elem[i].replace(/[^\s]+/g, function(str){return str.substr(0,1).toUpperCase()+str.substr(1).toLowerCase(); })  + '</li>';  	
+					    }
+					    $("#listeRT").append(resultList).listview("refresh");
+					    resultList = '<a href="javascript:displayQt(\'' + 
+					      t1 +'\', \'RT\')" data-role="button" data-inline="true" data-icon="search"' + 
+						' data-theme="b">Related</a>';	
+					    $("#relatedButtons").append(resultList).trigger("create");
+		
+					  });	// end getting RT
+
+					// -------------  Getting synonyms -- code Must be merged with RT !
+
+					  $.ucm.thes('syn', t1.toUpperCase() , function(ucmResponse) {
+						
+					    var searchResults = ucmResponse.ResultSets['SearchResults'];
+					    			
+					    for (var rowIndex in searchResults.rows) {
+				  	      var row = ucmResponse.getRow(searchResults, rowIndex);
+				  	     
+					    }
+					    // split the single row into parts
+					   
+					    var t2=row.SYN.replace(/\{/g,"");
+					    t2= t2.replace(/\}/g,"")
+					    //alert(t2);
+					    var elem = t2.split('|');
+					    resultList = '';
+					    
+					    for(var i = 0;i<elem.length; i++) {	
+						resultList = resultList + '<li data-theme="d">' + 
+					     	elem[i].replace(/[^\s]+/g, function(str){return str.substr(0,1).toUpperCase()+str.substr(1).toLowerCase(); })   + '</li>';  	
+					    }
+					    $("#listeSYN").append(resultList).listview("refresh");
+					    resultList = '<a href="javascript:displayQt(\'' + 
+					      t1 +'\', \'SYN\')" data-rel="Synonym" ' + 
+						' data-role="button"  data-icon="search" data-theme="b" data-inline="true">Synonyms</a>';	
+						
+					    $("#synButtons").append(resultList).trigger("create");
+					    
+					  });	// end getting SYN
+
+					}   // end if sur le quicksearch				
+			
+				});	// End display results
+				
+				//$.mobile.loading( 'hide' );
+			}
+
+		// ===================== END runSearch ============
+		
+	</script>	
+
+</head>
+<body>
+
+<div data-role="page" id="home">
+
+	<div data-role="header" data-theme="a">
+		
+		<a href="#popupLogin" data-rel="popup" data-transition="flip" 
+			data-position-to="window" data-role="button" data-icon="bars" class="ui-btn-right"
+			data-icon="check" >Sign in</a>
+
+			<div data-role="popup" id="popupMenu" data-theme="a">
+			   <div data-role="popup" id="popupLogin" data-theme="a" class="ui-corner-all">
+				<form name="loginForm" id="loginForm" method="post" 
+					 action="/cs/j_security_check">
+				   <div style="padding:10px 20px;">
+				      <h3>Please sign in</h3>
+					
+				      <input type="hidden" name="j_character_encoding" value="UTF-8">
+				      <label for="j_username" class="ui-hidden-accessible">Username:</label>
+				      <input type="text" name="j_username" id="j_username" value="" placeholder="username" data-theme="a" />
+				      <label for="j_password" class="ui-hidden-accessible">Password:</label>
+				      <input type="password" name="j_password" id="j_password" value="" placeholder="password" data-theme="a" />
+				      <button type="submit" data-theme="b" data-icon="check" value="Sign In">Sign in</button>
+				   </div>
+				</form>
+			   </div>
+			</div>
+
+		<h1> CONTRACT MANAGMENT </h1>
+	</div>
+	
+	<div data-role="content">
+	
+		<div class="colonneGauche">
+			<img src="image/contrat3.jpg"/>
+		</div>
+	
+		<div class="colonneDroite">
+			<p> This is a Jquery Mobile prototype for Oracle WebCenter Content <br>
+			This application allows to enter search criterias and browse on resultsets. 
+			If some meta have been setup as filter, they are provided on a left panel menu
+			Some requests can be made against a thesaurus with the Taxonomy option
+			</p>
+		</div>
+	</div>
+	
+	<div data-role="footer" data-theme="a" data-position="fixed" data-id="footer">
+	   <div data-role="navbar">
+		<ul>
+		   <li><a href="#home" data-role="button" data-icon="home">Home</a></li>
+		   <li><a href="#search" data-role="button" data-icon="search">Search</a></li>
+		   <li><a href="#browse" data-role="button" data-icon="star">Browse</a></li>
+		   <li><a href="javascript:displayDomains()" data-role="button" id="btaxonomy" data-icon="gear">Taxonomy</a></li>
+		   <li><a href="#Settings" data-role="button" data-icon="grid">Settings</a></li>
+		</ul>
+	   </div>
+	</div>
+
+</div>
+
+<div data-role="page" id="search">
+
+	<div data-role="header" data-theme="a">
+		<h1> Search </h1>
+	</div>
+
+	<div data-role="content" class="centered">
+		
+		 <form id="searchForm"> 	
+			<label for="quickSearch">Enter criterias :</label>
+			<input id="quickSearch" type="search" name="quickSearch"  type="text" data-inline="true" value=""></input>
+			<input id="exts"  name="exts" id="exts" type="hidden" data-inline="true" value=""></input>
+			<input type="checkbox" name="checkbox-1" id="checkbox-1" />
+			<label for="checkbox-1">Search with Synonyms ?</label>
+			
+			<div data-role="fieldcontain">
+				<label for="language" class="select">Language : </label>
+				<select name="language" id="select-choice-1" data-inline="t ue"  data-native-menu="false">
+					<option selected value="english">english</option>
+					<option value="french">french</option>
+					<option value="spanish">spanish</option>
+					<option value="german">german</option>
+				</select>
+			</div>
+			<div data-role="fieldcontain">
+				<label for="profile" class="select">profile</label>
+				<select name="profile" id="profile"   data-native-menu="false">
+				   <option value="FicheContrat">Contrats / Fiches-Contrat</option>
+			   	   <option value="DocContrat">Documents Contractuels</option>
+				   <option value="Image">Images</option>
+				    <option selected value="All">All</option>
+				      
+				</select>
+			</div>
+
+			<div data-role="fieldcontain">
+				<label for="ctrcat" class="select">Category : </label>
+				<select name="ctrcat" id="ctrcat"   data-native-menu="false">
+				   <option selected value="All">All</option>
+				   <option value="Transport">Transport</option>
+			   	   <option value="Prestations logistiques">Prestations logistiques</option>
+				   <option value="Transport et prestations logistiques">Transport et prestations logistiques</option>
+				   <option value="Co-packing">Co-packing</option>
+				   <option value="Cession de fonds de commerce">Cession de fonds de commerce</option>
+				   <option value="Cession de société">Cession de société</option>
+				   <option value="Achat de fonds de commerce">Achat de fonds de commerce</option>
+				</select>
+			</div>
+
+			<label for="startdate">Sart Date : </label>
+			<input name="startdate" id="stardate" type="text" data-inline="true" style="min-width:210px;" data-role="datebox" 
+				data-options='{"mode":"calbox", "useNewStyle":true}' />
+			<label for="enddate">End Date : </label>
+			<input name="enddate" id="enddate" type="text" data-inline="true" style="min-width:210px;" data-role="datebox" 
+				data-options='{"mode":"calbox", "useNewStyle":true}' />
+		
+
+			<label for="slider"> Max number of documents: </label>
+			<input id="nbdoc" name="nbdoc" value="20" type="range" max="50" min="10">
+	
+			<!-- <button id="runSearch" name="runSearch" data-inline="true" data-theme="b"> Run Search </button> -->
+			<a href="javascript:runSearch()" data-role="button" data-inline="true" data-theme="b">search</a>
+			<a href="javascript:clearSearch()" data-role="button" data-inline="true" data-theme="b">Clear</a>	
+			<!-- <button id="clearSearch" name="cancelSearch" data-inline="true">Clear</button> -->
+		</form>  	
+	</div>
+	
+	<div data-role="footer" data-theme="a" data-position="fixed" data-id="footer">
+		<div data-role="navbar">
+		   <ul>
+			<li><a href="#home" data-role="button" data-icon="home">Home</a></li>
+			<li><a href="#search" data-role="button" data-icon="search">Search</a></li>
+			<li><a href="foldersid.html" rel="external" data-role="button" data-icon="star">Browse</a></li>
+			<li><a href="javascript:displayDomains()" data-role="button" data-icon="gear">Taxonomy</a></li>
+		   </ul>
+		</div>
+	</div>
+
+</div>
+
+<div data-role="page" id="results">
+
+	<div data-role="header" data-theme="a">
+		<a href="#popupPanel" data-rel="popup" data-transition="slide" 
+			data-position-to="window" data-role="button" data-icon="bars">Filters</a>
+		<a href="#relatedPanel" data-rel="popup" data-transition="slide" 
+			data-position-to="window" data-role="button" data-icon="bars">Related</a>
+		<h1> Results </h1>
+	</div>
+	
+	<div data-role="content">
+	
+		<!--     ----- Main results ----------- -->
+
+		<ul id="liste" data-role="listview" data-inset="true" data-content-theme="d" data-split-theme="d" data-split-icon="info">
+		</ul>
+
+		<div id="pagination">
+			<!-- no used -->
+		</div>
+		<!--     ----- Faceted search ----------- --> 
+
+		<div data-role="panel" id="popupPanel" data-position="left" data-display="overlay" 
+				data-dismissible="true" data-theme="a">
+		
+			<div  id="navigation" data-role="collapsibleset" data-content-theme="d">	
+			</div>
+			<a href="#demo-links" data-rel="close" data-role="button"data-icon="delete" data-inline="true">Close</a>
+			<a href="javascript:resetNav()" data-rel="Reset" data-role="button"data-icon="minus" data-inline="true">Reset</a>
+		</div>
+		<div id="popupSet">
+		</div>	
+		<!--     ----- Related terms ----------- -->
+
+		<div id="relatedPanel" data-role="panel"  data-position="right" 
+		       data-display="overlay" data-dismissible="true" data-theme="a">
+		    
+		    <div id="synButtons">
+		    </div>
+			<ul  id="listeSYN" data-role="listview" data-inset="true" data-mini="true" data-content-theme="c">	
+		    </ul>
+		   
+		     <div id="relatedButtons">
+		    </div>  
+		    <ul  id="listeRT" data-role="listview" data-inset="true" data-mini="true" data-content-theme="c">	
+		    </ul>
+		   
+
+		   
+		    
+		</div>
+
+		<!--     ----- No result ----------- -->
+
+		<div id="noresult" data-role="popup" data-theme="e">
+			
+			<p>No document found with the criterias </p>
+			<p>Try with related terms or synonyms provided by the thesaurus</p>
+			<p>by choosing the <i>related</i> button on the upper right <p>
+			<a href="#" data-rel="back" data-role="button"data-icon="delete" data-inline="true">Close</a>
+			
+		</div>		
+	</div>
+
+	<!-- data-position="fixed" NE tient pas bien sur mobile !-->
+	<div data-role="footer" data-theme="a" data-position="fixed" data-id="footer">
+	   <div data-role="navbar">
+		   <ul>
+			<li><a href="#home" data-role="button" data-icon="home">Home</a></li>
+			<li><a href="#search" data-role="button" data-icon="search">Search</a></li>
+			<li><a href="foldersid.html" rel="external" data-role="button" data-icon="star">Browse</a></li>
+			<li><a href="javascript:displayDomains()" data-role="button" data-icon="gear">Taxonomy</a></li>
+		   </ul>
+	   </div>
+	</div>
+</div>
+
+<div data-role="page" id="browse">
+
+	<div data-role="header" data-theme="a">
+		<h1> Browse </h1>
+	</div>
+
+	<div data-role="footer" data-theme="a"  data-id="footer">
+		<div data-role="navbar">
+		   <ul>
+			<li><a href="#home" data-role="button" data-icon="home">Home</a></li>
+			<li><a href="#search" data-role="button" data-icon="search">Search</a></li>
+			<li><a href="foldersid.html" rel="external" data-role="button" data-icon="star">Browse</a></li>
+			<li><a href="javascript:displayDomains()" data-role="button" data-icon="gear">Taxonomy</a></li>
+		   </ul>
+		</div>
+	</div>
+</div>
+
+<div data-role="page" id="taxonomy">
+
+	<div data-role="header" data-theme="a">
+		<div id="taxoPath"  data-role="controlgroup" data-content-theme="a" data-type="horizontal">
+		<a href=<a href="javascript:displayDomains()" data-mini="true" data-role="button">Eurovoc</a>
+		<a href=<a href="javascript:displayDomains()" data-mini="true" data-role="button">Search a Phrase</a>
+		
+	   </div>
+	</div>
+	<div data-role="content">
+           	
+		<ul id="listeTaxo" data-role="listview"  data-content-theme="d" 
+			data-split-theme="d" data-split-icon="search">
+		</ul>	
+		
+		<div data-role="popup" id="popupMenuTaxo" data-theme="d">
+
+			<ul data-role="listview" data-inset="true" style="min-width:210px;" data-theme="d">
+			  <li data-role="divider" data-theme="e">Querying method</li>
+			  <li><a href="javascript:displayQt(Gterm, 'EQ')">Exact Term</a></li>
+			  <li><a href="javascript:displayQt(Gterm, 'NT')">More Specific</a></li>
+			  <li><a href="javascript:displayQt(Gterm, 'BT')">More Generic</a></li>
+			  <li><a href="javascript:displayQt(Gterm, 'RT')">Related</a></li>
+			  <li><a href="javascript:displayQt(Gterm, 'SYN')">Synonym</a></li>
+			 
+			</ul>
+		</div>
+		
+	</div>
+		
+	<div data-role="footer" data-theme="a" data-position="fixed" data-tap-toggle="true" data-id="footer">
+		<div data-role="navbar">
+		   <ul>
+			<li><a href="#home" data-role="button" data-icon="home">Home</a></li>
+			<li><a href="#search" data-role="button" data-icon="search">Search</a></li>
+			<li><a href="foldersid.html" rel="external" data-role="button" data-icon="star">Browse</a></li>
+			<li><a href="javascript:displayDomains()" data-role="button" data-icon="gear">Taxonomy</a></li>
+		   </ul>
+		</div>	
+	</div>
+
+</div>
+
+</body>
+</html>

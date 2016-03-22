@@ -1,0 +1,22 @@
+.colonneGauche {
+	display: inline-block;
+	margin: 10px;
+}
+
+.colonneDroite {
+	display: inline-block;
+	margin: 10px;
+}
+
+#pagination {
+	margin: 10px;
+}
+
+.oracle {
+	color: red;
+}
+
+.centered {
+	width: 50%;
+	margin: auto;
+}
